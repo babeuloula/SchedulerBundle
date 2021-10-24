@@ -389,6 +389,7 @@ final class SchedulerBundleExtensionTest extends TestCase
         $schedulerBundleExtension = new SchedulerBundleExtension();
 
         $containerBuilder = new ContainerBuilder();
+        $containerBuilder->setParameter('kernel.project_dir', 'foo');
         $containerBuilder->register(SerializerInterface::class, SerializerInterface::class);
 
         $schedulerBundleExtension->load([
@@ -944,7 +945,8 @@ final class SchedulerBundleExtensionTest extends TestCase
         self::assertSame(ExporterRegistry::class, $container->getDefinition(ExporterRegistry::class)->getTag('container.preload')[0]['class']);
 
         self::assertTrue($container->hasDefinition(CronTabExporter::class));
-        self::assertCount(0, $container->getDefinition(CronTabExporter::class)->getArguments());
+        self::assertCount(1, $container->getDefinition(CronTabExporter::class)->getArguments());
+        self::assertSame('foo', $container->getDefinition(CronTabExporter::class)->getArgument(0));
         self::assertTrue($container->getDefinition(CronTabExporter::class)->hasTag('scheduler.task_exporter'));
         self::assertTrue($container->getDefinition(CronTabExporter::class)->hasTag('container.preload'));
         self::assertSame(CronTabExporter::class, $container->getDefinition(CronTabExporter::class)->getTag('container.preload')[0]['class']);
@@ -1805,6 +1807,7 @@ final class SchedulerBundleExtensionTest extends TestCase
     private function getContainer(array $configuration = []): ContainerBuilder
     {
         $containerBuilder = new ContainerBuilder();
+        $containerBuilder->setParameter('kernel.project_dir', 'foo');
         $containerBuilder->registerExtension(new SchedulerBundleExtension());
         $containerBuilder->loadFromExtension('scheduler_bundle', $configuration);
 
