@@ -13,6 +13,7 @@ use SchedulerBundle\Task\LazyTaskList;
 use SchedulerBundle\Task\TaskInterface;
 use SchedulerBundle\Task\TaskList;
 use SchedulerBundle\Task\TaskListInterface;
+use SchedulerBundle\Transport\Configuration\ConfigurationInterface;
 use function sprintf;
 
 /**
@@ -20,16 +21,20 @@ use function sprintf;
  */
 final class InMemoryTransport extends AbstractTransport
 {
+    /**
+     * @var TaskListInterface<string|int, TaskInterface>
+     */
     private TaskListInterface $tasks;
     private SchedulePolicyOrchestratorInterface $orchestrator;
 
     public function __construct(
-        array $options,
+        ConfigurationInterface $configuration,
         SchedulePolicyOrchestratorInterface $schedulePolicyOrchestrator
     ) {
-        $this->defineOptions($options);
         $this->orchestrator = $schedulePolicyOrchestrator;
         $this->tasks = new TaskList();
+
+        parent::__construct($configuration);
     }
 
     /**

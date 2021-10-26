@@ -14,6 +14,7 @@ use SchedulerBundle\Messenger\TaskToPauseMessage;
 use SchedulerBundle\Messenger\TaskToUpdateMessage;
 use SchedulerBundle\Messenger\TaskToYieldMessage;
 use SchedulerBundle\Middleware\SchedulerMiddlewareStack;
+use SchedulerBundle\Pool\Configuration\SchedulerConfiguration;
 use SchedulerBundle\Task\LazyTask;
 use SchedulerBundle\Task\LazyTaskList;
 use SchedulerBundle\Task\TaskList;
@@ -152,7 +153,7 @@ final class Scheduler implements SchedulerInterface
      */
     public function update(string $taskName, TaskInterface $task, bool $async = false): void
     {
-        if ($async) {
+        if ($async && $this->bus instanceof MessageBusInterface) {
             $this->bus->dispatch(new TaskToUpdateMessage($taskName, $task));
 
             return;
@@ -294,6 +295,16 @@ final class Scheduler implements SchedulerInterface
     public function getTimezone(): DateTimeZone
     {
         return $this->timezone;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function getPoolConfiguration(): SchedulerConfiguration
+    {
+        $dueTasks = $this->getDueTasks();
+
+        return new SchedulerConfiguration($this->timezone, $this->getSynchronizedCurrentDate(), ...$dueTasks->toArray(false));
     }
 
     /**

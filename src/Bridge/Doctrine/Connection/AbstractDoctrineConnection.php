@@ -2,20 +2,22 @@
 
 declare(strict_types=1);
 
-namespace SchedulerBundle\Bridge\Doctrine\Transport;
+namespace SchedulerBundle\Bridge\Doctrine\Connection;
 
 use Doctrine\DBAL\Connection as DBALConnection;
 use Doctrine\DBAL\Exception;
 use Doctrine\DBAL\Query\QueryBuilder;
 use Doctrine\DBAL\Schema\Comparator;
 use Doctrine\DBAL\Schema\Schema;
+use Doctrine\DBAL\Types\Type;
+use function sprintf;
 
 /**
  * @author Guillaume Loulier <contact@guillaumeloulier.fr>
  */
 abstract class AbstractDoctrineConnection
 {
-    private DbalConnection $driverConnection;
+    protected DbalConnection $driverConnection;
 
     public function __construct(DBALConnection $driverConnection)
     {
@@ -24,7 +26,16 @@ abstract class AbstractDoctrineConnection
 
     abstract protected function addTableToSchema(Schema $schema): void;
 
+    /**
+     * @param string                                  $sql
+     * @param array<int|string, mixed>                $parameters
+     * @param array<int|string, int|string|Type|null> $types
+     *
+     * @return mixed
+     */
     abstract protected function executeQuery(string $sql, array $parameters = [], array $types = []);
+
+    abstract public function configureSchema(Schema $schema, DbalConnection $dbalConnection): void;
 
     /**
      * @throws Exception

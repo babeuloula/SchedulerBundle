@@ -12,6 +12,7 @@ use Psr\Log\NullLogger;
 use RuntimeException;
 use SchedulerBundle\Event\WorkerPausedEvent;
 use SchedulerBundle\Event\WorkerRunningEvent;
+use SchedulerBundle\Middleware\MiddlewareRegistry;
 use SchedulerBundle\Middleware\NotifierMiddleware;
 use SchedulerBundle\Middleware\MaxExecutionMiddleware;
 use SchedulerBundle\Middleware\SchedulerMiddlewareStack;
@@ -39,6 +40,7 @@ use SchedulerBundle\Task\TaskExecutionTracker;
 use SchedulerBundle\Task\TaskListInterface;
 use SchedulerBundle\TaskBag\AccessLockBag;
 use SchedulerBundle\TaskBag\NotificationTaskBag;
+use SchedulerBundle\Transport\Configuration\InMemoryConfiguration;
 use SchedulerBundle\Transport\InMemoryTransport;
 use SchedulerBundle\Worker\WorkerConfiguration;
 use SchedulerBundle\Worker\WorkerInterface;
@@ -82,7 +84,7 @@ final class WorkerTest extends TestCase
         $watcher = $this->createMock(TaskExecutionTrackerInterface::class);
         $logger = $this->createMock(LoggerInterface::class);
 
-        $worker = new Worker($scheduler, new RunnerRegistry([]), $watcher, new WorkerMiddlewareStack(), $eventDispatcher, new LockFactory(new InMemoryStore()), $logger);
+        $worker = new Worker($scheduler, new RunnerRegistry([]), $watcher, new WorkerMiddlewareStack(new MiddlewareRegistry([])), $eventDispatcher, new LockFactory(new InMemoryStore()), $logger);
 
         self::expectException(UndefinedRunnerException::class);
         self::expectExceptionMessage('No runner found');
@@ -103,9 +105,9 @@ final class WorkerTest extends TestCase
 
         $lockFactory = new LockFactory(new InMemoryStore());
 
-        $worker = new Worker($scheduler, new RunnerRegistry([$runner]), $watcher, new WorkerMiddlewareStack([
+        $worker = new Worker($scheduler, new RunnerRegistry([$runner]), $watcher, new WorkerMiddlewareStack(new MiddlewareRegistry([
             new TaskLockBagMiddleware($lockFactory),
-        ]), $eventDispatcher, $lockFactory, $logger);
+        ])), $eventDispatcher, $lockFactory, $logger);
 
         $configuration = WorkerConfiguration::create();
         $configuration->stop();
@@ -139,9 +141,9 @@ final class WorkerTest extends TestCase
 
         $worker = new Worker($scheduler, new RunnerRegistry([
             new NullTaskRunner(),
-        ]), $watcher, new WorkerMiddlewareStack([
+        ]), $watcher, new WorkerMiddlewareStack(new MiddlewareRegistry([
             new TaskLockBagMiddleware($lockFactory),
-        ]), $eventDispatcher, $lockFactory, new NullLogger());
+        ])), $eventDispatcher, $lockFactory, new NullLogger());
 
         $configuration = WorkerConfiguration::create();
         $configuration->setSleepDurationDelay(5);
@@ -186,10 +188,10 @@ final class WorkerTest extends TestCase
         $worker = new Worker($scheduler, new RunnerRegistry([
             new CallbackTaskRunner(),
             new ShellTaskRunner(),
-        ]), $watcher, new WorkerMiddlewareStack([
+        ]), $watcher, new WorkerMiddlewareStack(new MiddlewareRegistry([
             new TaskUpdateMiddleware($scheduler),
             new TaskLockBagMiddleware($lockFactory),
-        ]), $eventDispatcher, $lockFactory, $logger);
+        ])), $eventDispatcher, $lockFactory, $logger);
         $worker->execute(WorkerConfiguration::create());
 
         self::assertNull($worker->getLastExecutedTask());
@@ -224,10 +226,10 @@ final class WorkerTest extends TestCase
 
         $worker = new Worker($scheduler, new RunnerRegistry([
             new NullTaskRunner(),
-        ]), $watcher, new WorkerMiddlewareStack([
+        ]), $watcher, new WorkerMiddlewareStack(new MiddlewareRegistry([
             new TaskUpdateMiddleware($scheduler),
             new TaskLockBagMiddleware($lockFactory),
-        ]), $eventDispatcher, $lockFactory, $logger);
+        ])), $eventDispatcher, $lockFactory, $logger);
 
         $configuration = WorkerConfiguration::create();
         $configuration->stop();
@@ -274,11 +276,11 @@ final class WorkerTest extends TestCase
 
         $worker = new Worker($scheduler, new RunnerRegistry([
             new NullTaskRunner(),
-        ]), $tracker, new WorkerMiddlewareStack([
+        ]), $tracker, new WorkerMiddlewareStack(new MiddlewareRegistry([
             new SingleRunTaskMiddleware($scheduler),
             new TaskUpdateMiddleware($scheduler),
             new TaskLockBagMiddleware($lockFactory),
-        ]), $eventDispatcher, $lockFactory, $logger);
+        ])), $eventDispatcher, $lockFactory, $logger);
         $worker->execute(WorkerConfiguration::create());
 
         self::assertNull($task->getExecutionState());
@@ -315,10 +317,10 @@ final class WorkerTest extends TestCase
 
         $worker = new Worker($scheduler, new RunnerRegistry([
             new NullTaskRunner(),
-        ]), $tracker, new WorkerMiddlewareStack([
+        ]), $tracker, new WorkerMiddlewareStack(new MiddlewareRegistry([
             new SingleRunTaskMiddleware($scheduler),
             new TaskLockBagMiddleware($lockFactory),
-        ]), $eventDispatcher, $lockFactory, $logger);
+        ])), $eventDispatcher, $lockFactory, $logger);
         $worker->execute(WorkerConfiguration::create());
 
         self::assertSame($task, $worker->getLastExecutedTask());
@@ -351,11 +353,11 @@ final class WorkerTest extends TestCase
 
         $worker = new Worker($scheduler, new RunnerRegistry([
             new NullTaskRunner(),
-        ]), $tracker, new WorkerMiddlewareStack([
+        ]), $tracker, new WorkerMiddlewareStack(new MiddlewareRegistry([
             new SingleRunTaskMiddleware($scheduler),
             new TaskCallbackMiddleware(),
             new TaskLockBagMiddleware($lockFactory),
-        ]), $eventDispatcher, $lockFactory, $logger);
+        ])), $eventDispatcher, $lockFactory, $logger);
         $worker->execute(WorkerConfiguration::create());
 
         self::assertNull($worker->getLastExecutedTask());
@@ -393,11 +395,11 @@ final class WorkerTest extends TestCase
 
         $worker = new Worker($scheduler, new RunnerRegistry([
             new NullTaskRunner(),
-        ]), $tracker, new WorkerMiddlewareStack([
+        ]), $tracker, new WorkerMiddlewareStack(new MiddlewareRegistry([
             new SingleRunTaskMiddleware($scheduler),
             new TaskCallbackMiddleware(),
             new TaskLockBagMiddleware($lockFactory),
-        ]), $eventDispatcher, $lockFactory, $logger);
+        ])), $eventDispatcher, $lockFactory, $logger);
         $worker->execute(WorkerConfiguration::create());
 
         self::assertCount(1, $worker->getFailedTasks());
@@ -433,11 +435,11 @@ final class WorkerTest extends TestCase
 
         $worker = new Worker($scheduler, new RunnerRegistry([
             new NullTaskRunner(),
-        ]), $tracker, new WorkerMiddlewareStack([
+        ]), $tracker, new WorkerMiddlewareStack(new MiddlewareRegistry([
             new SingleRunTaskMiddleware($scheduler),
             new TaskCallbackMiddleware(),
             new TaskLockBagMiddleware($lockFactory),
-        ]), $eventDispatcher, $lockFactory, $logger);
+        ])), $eventDispatcher, $lockFactory, $logger);
         $worker->execute(WorkerConfiguration::create());
 
         self::assertSame($task, $worker->getLastExecutedTask());
@@ -475,11 +477,11 @@ final class WorkerTest extends TestCase
 
         $worker = new Worker($scheduler, new RunnerRegistry([
             new NullTaskRunner(),
-        ]), $tracker, new WorkerMiddlewareStack([
+        ]), $tracker, new WorkerMiddlewareStack(new MiddlewareRegistry([
             new SingleRunTaskMiddleware($scheduler),
             new TaskCallbackMiddleware(),
             new TaskLockBagMiddleware($lockFactory),
-        ]), $eventDispatcher, $lockFactory, $logger);
+        ])), $eventDispatcher, $lockFactory, $logger);
         $worker->execute(WorkerConfiguration::create());
 
         self::assertCount(1, $worker->getFailedTasks());
@@ -515,11 +517,11 @@ final class WorkerTest extends TestCase
 
         $worker = new Worker($scheduler, new RunnerRegistry([
             new NullTaskRunner(),
-        ]), $tracker, new WorkerMiddlewareStack([
+        ]), $tracker, new WorkerMiddlewareStack(new MiddlewareRegistry([
             new SingleRunTaskMiddleware($scheduler),
             new TaskCallbackMiddleware(),
             new TaskLockBagMiddleware($lockFactory),
-        ]), $eventDispatcher, $lockFactory, $logger);
+        ])), $eventDispatcher, $lockFactory, $logger);
         $worker->execute(WorkerConfiguration::create());
 
         self::assertCount(0, $worker->getFailedTasks());
@@ -537,11 +539,11 @@ final class WorkerTest extends TestCase
         $eventDispatcher = new EventDispatcher();
         $eventDispatcher->addSubscriber(new StopWorkerOnTaskLimitSubscriber(1));
 
-        $scheduler = new Scheduler('UTC', new InMemoryTransport([], new SchedulePolicyOrchestrator([
+        $scheduler = new Scheduler('UTC', new InMemoryTransport(new InMemoryConfiguration(), new SchedulePolicyOrchestrator([
             new FirstInFirstOutPolicy(),
-        ])), new SchedulerMiddlewareStack([
+        ])), new SchedulerMiddlewareStack(new MiddlewareRegistry([
             new TaskLockBagMiddleware(new LockFactory(new InMemoryStore())),
-        ]), $eventDispatcher);
+        ])), $eventDispatcher);
         $scheduler->schedule(new NullTask('foo'));
 
         $lockFactory = new LockFactory(new InMemoryStore());
@@ -552,13 +554,13 @@ final class WorkerTest extends TestCase
                 new NullTaskRunner(),
             ]),
             new TaskExecutionTracker(new Stopwatch()),
-            new WorkerMiddlewareStack([
+            new WorkerMiddlewareStack(new MiddlewareRegistry([
                 new TaskCallbackMiddleware(),
                 new NotifierMiddleware(),
                 new SingleRunTaskMiddleware($scheduler),
                 new TaskUpdateMiddleware($scheduler),
                 new TaskLockBagMiddleware($lockFactory),
-            ]),
+            ])),
             $eventDispatcher,
             $lockFactory,
             $logger
@@ -601,10 +603,10 @@ final class WorkerTest extends TestCase
 
         $worker = new Worker($scheduler, new RunnerRegistry([
             new NullTaskRunner(),
-        ]), $tracker, new WorkerMiddlewareStack([
+        ]), $tracker, new WorkerMiddlewareStack(new MiddlewareRegistry([
             new SingleRunTaskMiddleware($scheduler),
             new TaskLockBagMiddleware($lockFactory),
-        ]), $eventDispatcher, $lockFactory, $logger);
+        ])), $eventDispatcher, $lockFactory, $logger);
         $worker->execute(WorkerConfiguration::create());
 
         self::assertSame($task, $worker->getLastExecutedTask());
@@ -642,10 +644,10 @@ final class WorkerTest extends TestCase
         $worker = new Worker($scheduler, new RunnerRegistry([
             $runner,
             $secondRunner,
-        ]), $tracker, new WorkerMiddlewareStack([
+        ]), $tracker, new WorkerMiddlewareStack(new MiddlewareRegistry([
             new SingleRunTaskMiddleware($scheduler),
             new TaskLockBagMiddleware($lockFactory),
-        ]), $eventDispatcher, $lockFactory, $logger);
+        ])), $eventDispatcher, $lockFactory, $logger);
         $worker->execute(WorkerConfiguration::create());
 
         self::assertSame($shellTask, $worker->getLastExecutedTask());
@@ -679,9 +681,9 @@ final class WorkerTest extends TestCase
 
         $worker = new Worker($scheduler, new RunnerRegistry([
             $runner,
-        ]), $tracker, new WorkerMiddlewareStack([
+        ]), $tracker, new WorkerMiddlewareStack(new MiddlewareRegistry([
             new TaskLockBagMiddleware($lockFactory),
-        ]), $eventDispatcher, $lockFactory, $logger);
+        ])), $eventDispatcher, $lockFactory, $logger);
         $worker->execute(WorkerConfiguration::create());
 
         $failedTasks = $worker->getFailedTasks();
@@ -723,12 +725,12 @@ final class WorkerTest extends TestCase
 
         $worker = new Worker($scheduler, new RunnerRegistry([
             new NullTaskRunner(),
-        ]), $tracker, new WorkerMiddlewareStack([
+        ]), $tracker, new WorkerMiddlewareStack(new MiddlewareRegistry([
             new SingleRunTaskMiddleware($scheduler),
             new TaskCallbackMiddleware(),
             new NotifierMiddleware($notifier),
             new TaskLockBagMiddleware($lockFactory),
-        ]), $eventDispatcher, $lockFactory, $logger);
+        ])), $eventDispatcher, $lockFactory, $logger);
         $worker->execute(WorkerConfiguration::create());
 
         self::assertSame($task, $worker->getLastExecutedTask());
@@ -768,12 +770,12 @@ final class WorkerTest extends TestCase
 
         $worker = new Worker($scheduler, new RunnerRegistry([
             new NullTaskRunner(),
-        ]), $tracker, new WorkerMiddlewareStack([
+        ]), $tracker, new WorkerMiddlewareStack(new MiddlewareRegistry([
             new SingleRunTaskMiddleware($scheduler),
             new TaskCallbackMiddleware(),
             new NotifierMiddleware($notifier),
             new TaskLockBagMiddleware($lockFactory),
-        ]), $eventDispatcher, $lockFactory, $logger);
+        ])), $eventDispatcher, $lockFactory, $logger);
         $worker->execute(WorkerConfiguration::create());
 
         self::assertSame($task, $worker->getLastExecutedTask());
@@ -808,12 +810,12 @@ final class WorkerTest extends TestCase
 
         $worker = new Worker($scheduler, new RunnerRegistry([
             new NullTaskRunner(),
-        ]), $tracker, new WorkerMiddlewareStack([
+        ]), $tracker, new WorkerMiddlewareStack(new MiddlewareRegistry([
             new SingleRunTaskMiddleware($scheduler),
             new TaskCallbackMiddleware(),
             new NotifierMiddleware($notifier),
             new TaskLockBagMiddleware($lockFactory),
-        ]), $eventDispatcher, $lockFactory, $logger);
+        ])), $eventDispatcher, $lockFactory, $logger);
         $worker->execute(WorkerConfiguration::create());
 
         self::assertSame($task, $worker->getLastExecutedTask());
@@ -853,12 +855,12 @@ final class WorkerTest extends TestCase
 
         $worker = new Worker($scheduler, new RunnerRegistry([
             new NullTaskRunner(),
-        ]), $tracker, new WorkerMiddlewareStack([
+        ]), $tracker, new WorkerMiddlewareStack(new MiddlewareRegistry([
             new SingleRunTaskMiddleware($scheduler),
             new TaskCallbackMiddleware(),
             new NotifierMiddleware($notifier),
             new TaskLockBagMiddleware($lockFactory, $logger),
-        ]), $eventDispatcher, $lockFactory, $logger);
+        ])), $eventDispatcher, $lockFactory, $logger);
         $worker->execute(WorkerConfiguration::create());
 
         self::assertSame($task, $worker->getLastExecutedTask());
@@ -890,11 +892,11 @@ final class WorkerTest extends TestCase
 
         $worker = new Worker($scheduler, new RunnerRegistry([
             new NullTaskRunner(),
-        ]), $tracker, new WorkerMiddlewareStack([
+        ]), $tracker, new WorkerMiddlewareStack(new MiddlewareRegistry([
             new MaxExecutionMiddleware(),
             new SingleRunTaskMiddleware($scheduler),
             new TaskLockBagMiddleware($lockFactory),
-        ]), $eventDispatcher, $lockFactory, $logger);
+        ])), $eventDispatcher, $lockFactory, $logger);
         $worker->execute(WorkerConfiguration::create());
 
         self::assertSame($task, $worker->getLastExecutedTask());
@@ -927,7 +929,7 @@ final class WorkerTest extends TestCase
 
         $worker = new Worker($scheduler, new RunnerRegistry([
             new NullTaskRunner(),
-        ]), $tracker, new WorkerMiddlewareStack([
+        ]), $tracker, new WorkerMiddlewareStack(new MiddlewareRegistry([
             new MaxExecutionMiddleware(new RateLimiterFactory([
                 'id' => 'foo',
                 'policy' => 'token_bucket',
@@ -938,7 +940,7 @@ final class WorkerTest extends TestCase
             ], new InMemoryStorage())),
             new SingleRunTaskMiddleware($scheduler),
             new TaskLockBagMiddleware($lockFactory),
-        ]), $eventDispatcher, $lockFactory, $logger);
+        ])), $eventDispatcher, $lockFactory, $logger);
         $worker->execute(WorkerConfiguration::create());
 
         self::assertSame($task, $worker->getLastExecutedTask());
@@ -971,7 +973,7 @@ final class WorkerTest extends TestCase
 
         $worker = new Worker($scheduler, new RunnerRegistry([
             new NullTaskRunner(),
-        ]), $tracker, new WorkerMiddlewareStack([
+        ]), $tracker, new WorkerMiddlewareStack(new MiddlewareRegistry([
             new MaxExecutionMiddleware(new RateLimiterFactory([
                 'id' => 'foo',
                 'policy' => 'token_bucket',
@@ -982,7 +984,7 @@ final class WorkerTest extends TestCase
             ], new InMemoryStorage())),
             new SingleRunTaskMiddleware($scheduler),
             new TaskLockBagMiddleware($lockFactory),
-        ]), $eventDispatcher, $lockFactory, $logger);
+        ])), $eventDispatcher, $lockFactory, $logger);
 
         $worker->execute(WorkerConfiguration::create());
 
@@ -1018,10 +1020,10 @@ final class WorkerTest extends TestCase
 
         $worker = new Worker($scheduler, new RunnerRegistry([
             new NullTaskRunner(),
-        ]), $tracker, new WorkerMiddlewareStack([
+        ]), $tracker, new WorkerMiddlewareStack(new MiddlewareRegistry([
             new SingleRunTaskMiddleware($scheduler),
             new TaskLockBagMiddleware($lockFactory),
-        ]), $eventDispatcher, $lockFactory, $logger);
+        ])), $eventDispatcher, $lockFactory, $logger);
         $worker->execute(WorkerConfiguration::create(), $task);
 
         self::assertCount(0, $worker->getFailedTasks());
@@ -1053,10 +1055,10 @@ final class WorkerTest extends TestCase
 
         $lockFactory = new LockFactory(new InMemoryStore());
 
-        $worker = new Worker($scheduler, new RunnerRegistry([$runner]), $tracker, new WorkerMiddlewareStack([
+        $worker = new Worker($scheduler, new RunnerRegistry([$runner]), $tracker, new WorkerMiddlewareStack(new MiddlewareRegistry([
             new SingleRunTaskMiddleware($scheduler),
             new TaskLockBagMiddleware($lockFactory),
-        ]), $eventDispatcher, $lockFactory, $logger);
+        ])), $eventDispatcher, $lockFactory, $logger);
 
         $worker->execute(WorkerConfiguration::create(), $task);
 
@@ -1110,11 +1112,11 @@ final class WorkerTest extends TestCase
 
         $worker = new Worker($scheduler, new RunnerRegistry([
             new NullTaskRunner(),
-        ]), $tracker, new WorkerMiddlewareStack([
+        ]), $tracker, new WorkerMiddlewareStack(new MiddlewareRegistry([
             new SingleRunTaskMiddleware($scheduler),
             new TaskUpdateMiddleware($scheduler),
             new TaskLockBagMiddleware($lockFactory),
-        ]), $eventDispatcher, $lockFactory, $logger);
+        ])), $eventDispatcher, $lockFactory, $logger);
         $worker->execute(WorkerConfiguration::create());
 
         self::assertNull($worker->getLastExecutedTask());
@@ -1147,11 +1149,11 @@ final class WorkerTest extends TestCase
                 new ShellTaskRunner(),
             ]),
             new TaskExecutionTracker(new Stopwatch()),
-            new WorkerMiddlewareStack([
+            new WorkerMiddlewareStack(new MiddlewareRegistry([
                 new SingleRunTaskMiddleware($scheduler),
                 new TaskUpdateMiddleware($scheduler),
                 new TaskLockBagMiddleware($lockFactory),
-            ]),
+            ])),
             $eventDispatcher,
             $lockFactory,
             $logger
@@ -1211,11 +1213,11 @@ final class WorkerTest extends TestCase
                 new ShellTaskRunner(),
             ]),
             new TaskExecutionTracker(new Stopwatch()),
-            new WorkerMiddlewareStack([
+            new WorkerMiddlewareStack(new MiddlewareRegistry([
                 new SingleRunTaskMiddleware($scheduler),
                 new TaskUpdateMiddleware($scheduler),
                 new TaskLockBagMiddleware($lockFactory),
-            ]),
+            ])),
             $eventDispatcher,
             $lockFactory,
             $logger
@@ -1275,11 +1277,11 @@ final class WorkerTest extends TestCase
 
         $worker = new Worker($scheduler, new RunnerRegistry([
             new CommandTaskRunner($application),
-        ]), $tracker, new WorkerMiddlewareStack([
+        ]), $tracker, new WorkerMiddlewareStack(new MiddlewareRegistry([
             new SingleRunTaskMiddleware($scheduler),
             new TaskUpdateMiddleware($scheduler),
             new TaskLockBagMiddleware($lockFactory),
-        ]), new EventDispatcher(), $lockFactory, $logger);
+        ])), new EventDispatcher(), $lockFactory, $logger);
 
         $worker->execute(WorkerConfiguration::create());
 
@@ -1316,12 +1318,12 @@ final class WorkerTest extends TestCase
 
         $worker = new Worker($scheduler, new RunnerRegistry([
             $runner,
-        ]), $tracker, new WorkerMiddlewareStack([
+        ]), $tracker, new WorkerMiddlewareStack(new MiddlewareRegistry([
             new SingleRunTaskMiddleware($scheduler),
             new TaskUpdateMiddleware($scheduler),
             new TaskLockBagMiddleware($lockFactory),
             new TaskExecutionMiddleware(),
-        ]), new EventDispatcher(), $lockFactory, $logger);
+        ])), new EventDispatcher(), $lockFactory, $logger);
 
         $worker->execute(WorkerConfiguration::create());
 
@@ -1347,11 +1349,11 @@ final class WorkerTest extends TestCase
 
         $worker = new Worker($scheduler, new RunnerRegistry([
             new NullTaskRunner(),
-        ]), $tracker, new WorkerMiddlewareStack([
+        ]), $tracker, new WorkerMiddlewareStack(new MiddlewareRegistry([
             new SingleRunTaskMiddleware($scheduler),
             new TaskUpdateMiddleware($scheduler),
             new TaskLockBagMiddleware($lockFactory),
-        ]), new EventDispatcher(), $lockFactory, $logger);
+        ])), new EventDispatcher(), $lockFactory, $logger);
         self::assertSame(0, $worker->getConfiguration()->getExecutedTasksCount());
 
         $worker->execute(WorkerConfiguration::create());
@@ -1381,11 +1383,11 @@ final class WorkerTest extends TestCase
 
         $worker = new Worker($scheduler, new RunnerRegistry([
             new ShellTaskRunner(),
-        ]), $tracker, new WorkerMiddlewareStack([
+        ]), $tracker, new WorkerMiddlewareStack(new MiddlewareRegistry([
             new SingleRunTaskMiddleware($scheduler),
             new TaskUpdateMiddleware($scheduler),
             new TaskLockBagMiddleware($lockFactory),
-        ]), new EventDispatcher(), $lockFactory, $logger);
+        ])), new EventDispatcher(), $lockFactory, $logger);
 
         $worker->execute(WorkerConfiguration::create());
 
@@ -1413,11 +1415,11 @@ final class WorkerTest extends TestCase
 
         $worker = new Worker($scheduler, new RunnerRegistry([
             new NullTaskRunner(),
-        ]), $tracker, new WorkerMiddlewareStack([
+        ]), $tracker, new WorkerMiddlewareStack(new MiddlewareRegistry([
             new SingleRunTaskMiddleware($scheduler),
             new TaskUpdateMiddleware($scheduler),
             new TaskLockBagMiddleware($lockFactory),
-        ]), new EventDispatcher(), $lockFactory, $logger);
+        ])), new EventDispatcher(), $lockFactory, $logger);
 
         $worker->execute(WorkerConfiguration::create());
 
@@ -1467,11 +1469,11 @@ final class WorkerTest extends TestCase
 
         $worker = new Worker($scheduler, new RunnerRegistry([
             new NullTaskRunner(),
-        ]), $tracker, new WorkerMiddlewareStack([
+        ]), $tracker, new WorkerMiddlewareStack(new MiddlewareRegistry([
             new SingleRunTaskMiddleware($scheduler),
             new TaskUpdateMiddleware($scheduler),
             new TaskLockBagMiddleware($lockFactory),
-        ]), $eventDispatcher, $lockFactory, $logger);
+        ])), $eventDispatcher, $lockFactory, $logger);
 
         self::assertFalse($worker->isRunning());
 
@@ -1507,11 +1509,11 @@ final class WorkerTest extends TestCase
 
         $worker = new Worker($scheduler, new RunnerRegistry([
             new NullTaskRunner(),
-        ]), $tracker, new WorkerMiddlewareStack([
+        ]), $tracker, new WorkerMiddlewareStack(new MiddlewareRegistry([
             new SingleRunTaskMiddleware($scheduler),
             new TaskUpdateMiddleware($scheduler),
             new TaskLockBagMiddleware($lockFactory),
-        ]), $eventDispatcher, $lockFactory, $logger);
+        ])), $eventDispatcher, $lockFactory, $logger);
 
         self::assertFalse($worker->getConfiguration()->shouldStop());
         self::assertFalse($worker->isRunning());
@@ -1536,11 +1538,11 @@ final class WorkerTest extends TestCase
 
         $worker = new Worker($scheduler, new RunnerRegistry([
             new NullTaskRunner(),
-        ]), $tracker, new WorkerMiddlewareStack([
+        ]), $tracker, new WorkerMiddlewareStack(new MiddlewareRegistry([
             new SingleRunTaskMiddleware($scheduler),
             new TaskUpdateMiddleware($scheduler),
             new TaskLockBagMiddleware($lockFactory),
-        ]), new EventDispatcher(), $lockFactory, $logger);
+        ])), new EventDispatcher(), $lockFactory, $logger);
 
         $barTask = new NullTask('bar');
         $randomTask = new NullTask('random');
@@ -1576,11 +1578,11 @@ final class WorkerTest extends TestCase
 
         $worker = new Worker($scheduler, new RunnerRegistry([
             new NullTaskRunner(),
-        ]), $tracker, new WorkerMiddlewareStack([
+        ]), $tracker, new WorkerMiddlewareStack(new MiddlewareRegistry([
             new SingleRunTaskMiddleware($scheduler),
             new TaskUpdateMiddleware($scheduler),
             new TaskLockBagMiddleware($lockFactory),
-        ]), new EventDispatcher(), $lockFactory, $logger);
+        ])), new EventDispatcher(), $lockFactory, $logger);
 
         $barTask = new NullTask('bar');
         $randomTask = new NullTask('random');

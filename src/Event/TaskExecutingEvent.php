@@ -16,8 +16,17 @@ final class TaskExecutingEvent extends Event implements TaskEventInterface, Work
 {
     private TaskInterface $task;
     private WorkerInterface $worker;
+
+    /**
+     * @var TaskListInterface<string|int, TaskInterface>
+     */
     private TaskListInterface $currentTasks;
 
+    /**
+     * @param TaskInterface                                $task
+     * @param WorkerInterface                              $worker
+     * @param TaskListInterface<string|int, TaskInterface> $currentTasks
+     */
     public function __construct(
         TaskInterface $task,
         WorkerInterface $worker,
@@ -41,6 +50,9 @@ final class TaskExecutingEvent extends Event implements TaskEventInterface, Work
         return $this->worker;
     }
 
+    /**
+     * @return TaskListInterface<string|int, TaskInterface>
+     */
     public function getCurrentTasks(): TaskListInterface
     {
         return $this->currentTasks;

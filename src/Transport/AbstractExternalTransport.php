@@ -11,6 +11,7 @@ use SchedulerBundle\Task\LazyTaskList;
 use SchedulerBundle\Task\TaskInterface;
 use SchedulerBundle\Task\TaskList;
 use SchedulerBundle\Task\TaskListInterface;
+use SchedulerBundle\Transport\Configuration\ConfigurationInterface;
 
 /**
  * @author Guillaume Loulier <contact@guillaumeloulier.fr>
@@ -21,11 +22,14 @@ abstract class AbstractExternalTransport extends AbstractTransport
     protected ConnectionInterface $connection;
 
     public function __construct(
+        ConfigurationInterface $configuration,
         ConnectionInterface $connection,
         SchedulePolicyOrchestratorInterface $schedulePolicyOrchestrator
     ) {
         $this->connection = $connection;
         $this->schedulePolicyOrchestrator = $schedulePolicyOrchestrator;
+
+        parent::__construct($configuration);
     }
 
     /**

@@ -51,8 +51,11 @@ interface WorkerInterface
      *
      *  - The worker retrieves the current tasks
      *  - The worker is paused then forked
-     *  - The new worker try to execute the given @param TaskListInterface $preemptTaskList then stop
+     *  - The new worker try to execute the given preempt task list then stop
      *  - The primary worker restart then try to execute the remaining tasks
+     *
+     * @param TaskListInterface<string|int, TaskInterface> $preemptTaskList
+     * @param TaskListInterface<string|int, TaskInterface> $toPreemptTasksList
      *
      * @throws Throwable {@see WorkerInterface::execute()}
      */
@@ -102,6 +105,8 @@ interface WorkerInterface
 
     /**
      * Every task in this list can also be retrieved independently thanks to {@see TaskFailedEvent}.
+     *
+     * @return TaskListInterface<string|int, TaskInterface>
      */
     public function getFailedTasks(): TaskListInterface;
 

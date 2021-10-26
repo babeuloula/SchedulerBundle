@@ -43,7 +43,6 @@ use function in_array;
 abstract class AbstractWorker implements WorkerInterface
 {
     private RunnerRegistryInterface $runnerRegistry;
-    private TaskListInterface $failedTasks;
     private EventDispatcherInterface $eventDispatcher;
     private LoggerInterface $logger;
     private SchedulerInterface $scheduler;
@@ -51,6 +50,11 @@ abstract class AbstractWorker implements WorkerInterface
     private WorkerMiddlewareStack $middlewareStack;
     private LockFactory $lockFactory;
     private WorkerConfiguration $configuration;
+
+    /**
+     * @var TaskListInterface<string|int, TaskInterface>
+     */
+    private TaskListInterface $failedTasks;
 
     public function __construct(
         SchedulerInterface $scheduler,
@@ -212,6 +216,8 @@ abstract class AbstractWorker implements WorkerInterface
     /**
      * @param array<int, TaskInterface> $tasks
      *
+     * @return TaskListInterface<string|int, TaskInterface>
+     *
      * @throws Throwable {@see SchedulerInterface::getDueTasks()}
      */
     protected function getTasks(array $tasks): TaskListInterface
@@ -238,6 +244,10 @@ abstract class AbstractWorker implements WorkerInterface
         return $lockedTasks->filter(fn (TaskInterface $task): bool => $this->checkTaskState($task));
     }
 
+    /**
+     * @param TaskInterface                                $task
+     * @param TaskListInterface<string|int, TaskInterface> $taskList
+     */
     protected function handleTask(TaskInterface $task, TaskListInterface $taskList): void
     {
         if ($this->configuration->shouldStop()) {
@@ -287,6 +297,9 @@ abstract class AbstractWorker implements WorkerInterface
         }
     }
 
+    /**
+     * @param TaskListInterface<string|int, TaskInterface> $taskList
+     */
     protected function shouldStop(TaskListInterface $taskList): bool
     {
         if ($this->configuration->isSleepingUntilNextMinute()) {

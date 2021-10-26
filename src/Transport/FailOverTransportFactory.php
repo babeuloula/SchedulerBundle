@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace SchedulerBundle\Transport;
 
 use SchedulerBundle\SchedulePolicy\SchedulePolicyOrchestratorInterface;
+use SchedulerBundle\Transport\Configuration\ConfigurationInterface;
 use Symfony\Component\Serializer\SerializerInterface;
 use function strpos;
 
@@ -14,12 +15,12 @@ use function strpos;
 final class FailOverTransportFactory extends AbstractCompoundTransportFactory
 {
     /**
-     * @var iterable|TransportFactoryInterface[]
+     * @var TransportFactoryInterface[]
      */
     private iterable $transportFactories;
 
     /**
-     * @param iterable|TransportFactoryInterface[] $transportFactories
+     * @param TransportFactoryInterface[] $transportFactories
      */
     public function __construct(iterable $transportFactories)
     {
@@ -29,9 +30,23 @@ final class FailOverTransportFactory extends AbstractCompoundTransportFactory
     /**
      * {@inheritdoc}
      */
-    public function createTransport(Dsn $dsn, array $options, SerializerInterface $serializer, SchedulePolicyOrchestratorInterface $schedulePolicyOrchestrator): TransportInterface
-    {
-        return new FailOverTransport($this->handleTransportDsn(' || ', $dsn, $this->transportFactories, $options, $serializer, $schedulePolicyOrchestrator));
+    public function createTransport(
+        Dsn $dsn,
+        array $options,
+        ConfigurationInterface $configuration,
+        SerializerInterface $serializer,
+        SchedulePolicyOrchestratorInterface $schedulePolicyOrchestrator
+    ): FailOverTransport {
+        $configuration->init([
+            'mode' => $options['mode'] ?? $dsn->getOption('mode', 'normal'),
+        ], [
+            'mode' => 'string',
+        ]);
+
+        return new FailOverTransport(
+            $this->handleTransportDsn(' || ', $dsn, $this->transportFactories, $options, $configuration, $serializer, $schedulePolicyOrchestrator),
+            $configuration
+        );
     }
 
     /**

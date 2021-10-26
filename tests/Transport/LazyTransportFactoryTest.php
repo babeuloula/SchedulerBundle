@@ -8,6 +8,7 @@ use Generator;
 use PHPUnit\Framework\TestCase;
 use SchedulerBundle\SchedulePolicy\FirstInFirstOutPolicy;
 use SchedulerBundle\SchedulePolicy\SchedulePolicyOrchestrator;
+use SchedulerBundle\Transport\Configuration\InMemoryConfiguration;
 use SchedulerBundle\Transport\Dsn;
 use SchedulerBundle\Transport\InMemoryTransportFactory;
 use SchedulerBundle\Transport\LazyTransportFactory;
@@ -39,7 +40,7 @@ final class LazyTransportFactoryTest extends TestCase
             new InMemoryTransportFactory(),
         ]);
 
-        $transport = $factory->createTransport(Dsn::fromString($dsn), [], $serializer, new SchedulePolicyOrchestrator([
+        $transport = $factory->createTransport(Dsn::fromString($dsn), [], new InMemoryConfiguration(), $serializer, new SchedulePolicyOrchestrator([
             new FirstInFirstOutPolicy(),
         ]));
 
