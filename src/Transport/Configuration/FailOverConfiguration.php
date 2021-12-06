@@ -19,30 +19,27 @@ final class FailOverConfiguration extends AbstractCompoundConfiguration
      */
     private SplObjectStorage $failedConfigurations;
 
-    /**
-     * @param ConfigurationInterface[] $configurationStorageList
-     */
-    public function __construct(iterable $configurationStorageList)
+    public function __construct(ConfigurationRegistryInterface $configurationRegistry)
     {
         $this->failedConfigurations = new SplObjectStorage();
 
-        parent::__construct($configurationStorageList);
+        parent::__construct($configurationRegistry);
     }
 
     protected function execute(Closure $func)
     {
-        if ([] === $this->configurationStorageList) {
+        if (0 === $this->configurationRegistry->count()) {
             throw new ConfigurationException('No configuration found');
         }
 
-        foreach ($this->configurationStorageList as $configurationStorage) {
+        foreach ($this->configurationRegistry as $configurationStorage) {
             if ($this->failedConfigurations->contains($configurationStorage)) {
                 continue;
             }
 
             try {
                 return $func($configurationStorage);
-            } catch (Throwable $throwable) {
+            } catch (Throwable) {
                 $this->failedConfigurations->attach($configurationStorage);
 
                 continue;
