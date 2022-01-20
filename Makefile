@@ -1,7 +1,12 @@
-DOCKER_COMPOSE = @docker-compose
+DOCKER_COMPOSE 			= @docker-compose
 
-PHP            = $(DOCKER_COMPOSE) run --rm php
-COMPOSER       = $(DOCKER_COMPOSE) run --rm php composer
+PHP            			= $(DOCKER_COMPOSE) run --rm php
+COMPOSER       			= $(DOCKER_COMPOSE) run --rm php composer
+MUTAGEN_COMPOSE_ENABLED := $(shell type mutagen-compose)
+
+ifdef MUTAGEN_COMPOSE_ENABLED
+	DOCKER_COMPOSE = mutagen-compose
+endif
 
 .DEFAULT_GOAL := help
 
@@ -12,7 +17,7 @@ help:
 ## Project
 ##---------------------------------------------------------------------------
 
-.PHONY: boot up down vendor
+.PHONY: boot up ps down vendor
 
 boot: ## Launch the project
 boot: up vendor
@@ -20,6 +25,14 @@ boot: up vendor
 up: ## Up the containers
 up: .cloud/docker docker-compose.yaml
 	$(DOCKER_COMPOSE) up -d --build --remove-orphans --force-recreate
+
+down: ## Up the containers
+down: .cloud/docker docker-compose.yaml
+	$(DOCKER_COMPOSE) down --volumes
+
+ps: ## List the services
+ps: docker-compose.yaml
+	$(DOCKER_COMPOSE) ps
 
 vendor: ## Install the dependencies
 vendor: composer.json
